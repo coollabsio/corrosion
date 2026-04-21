@@ -45,6 +45,13 @@ pub static API_CLIENT: OnceCell<CorrosionApiClient> = OnceCell::new();
 
 build_info::build_info!(pub fn version);
 
+pub const CLI_VERSION: &str = build_info::format!(
+    "{} ({} {})",
+    $.crate_info.version,
+    $.version_control?.git()?.commit_short_id,
+    $.timestamp
+);
+
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
@@ -610,7 +617,7 @@ fn main() {
 }
 
 #[derive(Parser)]
-#[command(version = VERSION)]
+#[command(version = CLI_VERSION)]
 struct Cli {
     /// Set the config file path
     #[arg(

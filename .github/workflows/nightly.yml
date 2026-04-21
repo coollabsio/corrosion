@@ -68,6 +68,14 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+          shared-key: nightly
+          cache-on-failure: true
+          cache-all-crates: true
+
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: corrosion

@@ -44,6 +44,14 @@ jobs:
         with:
           version: "v0.10.0"
 
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+          shared-key: ci-test
+          cache-on-failure: true
+          cache-all-crates: true
+
       - name: Test with latest nextest release
         run: cargo nextest run --profile ci --workspace --target ${{ matrix.target }}
 
@@ -60,6 +68,15 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install rustfmt and clippy
       run: rustup component add clippy rustfmt
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
+        shared-key: ci-lint
+        cache-on-failure: true
+        cache-all-crates: true
+
     # Split fetch so timings in Github show the actual
     # time for the clippy run rather than including the cost of crate fetching
     - run: cargo fetch

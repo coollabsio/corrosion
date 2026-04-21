@@ -2,7 +2,6 @@ name: Nightly
 
 permissions:
   contents: write
-  packages: write
 
 on:
   push:
@@ -87,44 +86,3 @@ jobs:
           target: ${{ matrix.target }}
           ref: refs/tags/${{ needs.create-release.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
-
-  docker:
-    needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=main
-            type=raw,value=${{ needs.create-release.outputs.tag }}
-            type=sha,prefix=main-,format=short
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

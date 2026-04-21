@@ -18,41 +18,30 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
+  prepare-release:
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Compute tag
-        id: tag
-        run: |
-          SHA_SHORT=$(git rev-parse --short HEAD)
-          echo "tag=main-${SHA_SHORT}" >> "$GITHUB_OUTPUT"
-
-      - name: Push lightweight tag
-        run: |
-          git tag ${{ steps.tag.outputs.tag }}
-          git push origin ${{ steps.tag.outputs.tag }}
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: "Main @ ${{ steps.tag.outputs.tag }}"
-          prerelease: true
-          make_latest: false
-          target_commitish: ${{ github.sha }}
-          body: |
-            Automated build from `main` at ${{ github.sha }}.
-
-            [View commit](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+      - name: Recreate nightly tag + release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          gh release delete nightly --yes --cleanup-tag --repo "${GITHUB_REPOSITORY}" || true
+          git tag -f nightly "${GITHUB_SHA}"
+          git push -f origin nightly
+          gh release create nightly \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "Nightly (main @ $(git rev-parse --short HEAD))" \
+            --prerelease \
+            --notes "Rolling build from \`main\` at ${GITHUB_SHA}.
+
+          [View commit](https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})"
 
   upload-assets:
-    needs: create-release
+    needs: prepare-release
     strategy:
       matrix:
         include:
@@ -67,7 +56,7 @@ jobs:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: rui314/setup-mold@v1
 
@@ -84,5 +73,5 @@ jobs:
           bin: corrosion
           archive: "corrosion-$target"
           target: ${{ matrix.target }}
-          ref: refs/tags/${{ needs.create-release.outputs.tag }}
+          ref: refs/tags/nightly
           token: ${{ secrets.GITHUB_TOKEN }}
